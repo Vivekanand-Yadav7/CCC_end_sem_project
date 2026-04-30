@@ -19,9 +19,23 @@ export const createTask = createAsyncThunk('tasks/create', async (taskData, thun
   }
 });
 
-export const getTasks = createAsyncThunk('tasks/getAll', async (_, thunkAPI) => {
+export const getTasks = createAsyncThunk('tasks/getAll', async (filters, thunkAPI) => {
   try {
-    const response = await axios.get(API_URL, getAuthHeaders(thunkAPI));
+    let url = API_URL;
+    if (filters) {
+      const params = new URLSearchParams(filters).toString();
+      url += `?${params}`;
+    }
+    const response = await axios.get(url, getAuthHeaders(thunkAPI));
+    return response.data;
+  } catch (error) {
+    return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);
+  }
+});
+
+export const getTaskStats = createAsyncThunk('tasks/getStats', async (_, thunkAPI) => {
+  try {
+    const response = await axios.get(`${API_URL}/stats`, getAuthHeaders(thunkAPI));
     return response.data;
   } catch (error) {
     return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);
@@ -50,6 +64,7 @@ export const taskSlice = createSlice({
   name: 'task',
   initialState: {
     tasks: [],
+    stats: null,
     isError: false,
     isSuccess: false,
     isLoading: false,
@@ -86,6 +101,9 @@ export const taskSlice = createSlice({
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;
+      })
+      .addCase(getTaskStats.fulfilled, (state, action) => {
+        state.stats = action.payload;
       })
       .addCase(updateTask.fulfilled, (state, action) => {
         const index = state.tasks.findIndex(task => task._id === action.payload._id);
